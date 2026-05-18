@@ -191,6 +191,7 @@ function saveStudentInfo(studentId) {
 
 function confirmDeleteStudent(studentId) {
   if (!confirm('确认删除该学员？此操作不可撤销。')) return;
+  getSessions().filter(s => s.student_id === studentId).forEach(s => deleteSession(s.id));
   deleteStudent(studentId);
   navigate('students');
 }

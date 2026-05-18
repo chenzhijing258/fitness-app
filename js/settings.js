@@ -79,7 +79,7 @@ function confirmAddVenue() {
   const name = document.getElementById('new-venue-name').value.trim();
   if (!name) return;
   saveVenue({ id: generateId(), name });
-  document.querySelector('.sheet-overlay').remove();
+  document.getElementById('new-venue-name').closest('.sheet-overlay').remove();
   renderSettingsView();
 }
 

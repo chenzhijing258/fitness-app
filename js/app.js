@@ -58,6 +58,6 @@ function runAutoComplete() {
     }
   });
   if (changed) {
-    localStorage.setItem('fa_sessions', JSON.stringify(sessions));
+    _save(KEYS.sessions, sessions);
   }
 }
