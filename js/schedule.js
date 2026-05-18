@@ -99,3 +99,139 @@ function selectScheduleDay(dateStr) {
   scheduleSelectedDate = dateStr;
   renderScheduleView();
 }
+
+function openSessionForm(sessionId) {
+  const session = sessionId ? getSessionById(sessionId) : null;
+  const students = getStudents();
+  const venues = getVenues();
+  const isEdit = !!session;
+
+  if (students.length === 0) {
+    showToast('请先在学员页面添加学员');
+    return;
+  }
+
+  const defaultDate = session ? session.date : scheduleSelectedDate;
+  const defaultTime = session ? session.time : '09:00';
+
+  // Pre-fill content from student's last session if adding new
+  let prefillContent = getTemplate();
+  if (!isEdit && students.length > 0) {
+    const firstStudentId = students[0].id;
+    const lastSession = getSessions()
+      .filter(s => s.student_id === firstStudentId)
+      .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+    if (lastSession) prefillContent = lastSession.content;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sheet-overlay';
+  overlay.id = 'session-sheet';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">${isEdit ? '编辑课程' : '添加课程'}</div>
+
+      <div class="form-group">
+        <label class="form-label">学员</label>
+        <select class="form-control" id="sf-student" onchange="prefillFromLastSession(this.value)">
+          ${students.map(s => `<option value="${s.id}" ${session && session.student_id === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">场所</label>
+        <select class="form-control" id="sf-venue">
+          ${venues.length === 0 ? '<option value="">（请先在设置中添加健身房）</option>' : venues.map(v => `<option value="${v.id}" ${session && session.venue_id === v.id ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">日期</label>
+          <input type="date" class="form-control" id="sf-date" value="${defaultDate}">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">时间</label>
+          <input type="time" class="form-control" id="sf-time" value="${defaultTime}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">时长</label>
+        <select class="form-control" id="sf-duration">
+          <option value="1" ${(!session || session.duration_hours === 1) ? 'selected' : ''}>1 小时</option>
+          <option value="1.5" ${session && session.duration_hours === 1.5 ? 'selected' : ''}>1.5 小时</option>
+          <option value="2" ${session && session.duration_hours === 2 ? 'selected' : ''}>2 小时</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">课程内容</label>
+        <textarea class="form-control" id="sf-content" placeholder="每行一个动作">${escapeHtml(session ? session.content : prefillContent)}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-control" id="sf-status">
+          <option value="已安排" ${!session || session.status === '已安排' ? 'selected' : ''}>已安排</option>
+          <option value="已完成" ${session && session.status === '已完成' ? 'selected' : ''}>已完成</option>
+        </select>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('session-sheet').remove()">取消</button>
+        <button class="btn btn-primary btn-full" onclick="saveSessionFromForm(${sessionId ? `'${sessionId}'` : null}, ${session ? session.deducted : false})">保存</button>
+      </div>
+
+      ${isEdit ? `<div style="margin-top:12px;"><button class="btn btn-danger btn-full" onclick="deleteSessionFromForm('${sessionId}')">删除课程</button></div>` : ''}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function prefillFromLastSession(studentId) {
+  const sessions = getSessions()
+    .filter(s => s.student_id === studentId)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const last = sessions[0];
+  const contentEl = document.getElementById('sf-content');
+  if (contentEl) {
+    contentEl.value = last ? last.content : getTemplate();
+  }
+}
+
+function saveSessionFromForm(existingId, wasDeducted) {
+  const studentId = document.getElementById('sf-student').value;
+  const venueId = document.getElementById('sf-venue').value;
+  const date = document.getElementById('sf-date').value;
+  const time = document.getElementById('sf-time').value;
+  const duration = parseFloat(document.getElementById('sf-duration').value);
+  const content = document.getElementById('sf-content').value.trim();
+  const status = document.getElementById('sf-status').value;
+
+  if (!studentId || !date || !time) { showToast('请填写必填项'); return; }
+
+  const id = existingId || generateId();
+  let deducted = wasDeducted || false;
+
+  // Deduct session count when marking complete for the first time
+  if (status === '已完成' && !deducted) {
+    const student = getStudentById(studentId);
+    if (student && student.remaining_sessions > 0) {
+      saveStudent({ ...student, remaining_sessions: student.remaining_sessions - 1 });
+    }
+    deducted = true;
+  }
+
+  saveSession({ id, student_id: studentId, venue_id: venueId, date, time, duration_hours: duration, content, status, deducted });
+
+  document.getElementById('session-sheet').remove();
+  renderScheduleView();
+}
+
+function deleteSessionFromForm(sessionId) {
+  if (!confirm('确认删除这节课？')) return;
+  deleteSession(sessionId);
+  document.getElementById('session-sheet').remove();
+  renderScheduleView();
+}
