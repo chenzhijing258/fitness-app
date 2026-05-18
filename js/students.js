@@ -253,3 +253,83 @@ function deletePackage(studentId, pkgId) {
   saveStudent({ ...student, packages: student.packages.filter(p => p.id !== pkgId) });
   renderStudentDetailView(studentId);
 }
+
+function renderHistorySection(studentId, showAll) {
+  const allSessions = getSessionsByStudentId(studentId)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const display = showAll ? allSessions : allSessions.slice(0, 10);
+  if (allSessions.length === 0) return '<p style="color:var(--text-muted);font-size:14px;">暂无上课记录</p>';
+  return display.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:600;font-size:14px;">${formatDisplayDate(s.date)} ${s.time}</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px;white-space:pre-wrap;">${escapeHtml(s.content)}</div>
+      </div>
+      <span class="session-status ${s.status === '已完成' ? 'status-done' : 'status-scheduled'}">${s.status}</span>
+    </div>
+  `).join('') + (allSessions.length > 10 && !showAll ? `
+    <button class="btn btn-ghost btn-full mt-8" onclick="expandHistory('${studentId}')">查看全部 ${allSessions.length} 次</button>
+  ` : '');
+}
+
+function expandHistory(studentId) {
+  document.getElementById('section-history').innerHTML = renderHistorySection(studentId, true);
+}
+
+function renderFeedbackSection(student) {
+  const items = (student.feedback || []).sort((a, b) => b.date.localeCompare(a.date));
+  return `
+    ${items.length === 0 ? '<p style="color:var(--text-muted);font-size:14px;">暂无 Feedback</p>' :
+      items.map(f => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">${formatDisplayDate(f.date)}</div>
+          <div style="font-size:15px;white-space:pre-wrap;">${escapeHtml(f.text)}</div>
+          <button class="btn" style="padding:4px 10px;font-size:12px;color:var(--danger);margin-top:6px;" onclick="deleteFeedback('${student.id}','${f.id}')">删除</button>
+        </div>
+      `).join('')}
+    <button class="btn btn-ghost btn-full mt-16" onclick="showAddFeedbackSheet('${student.id}')">＋ 添加 Feedback</button>
+  `;
+}
+
+function showAddFeedbackSheet(studentId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'sheet-overlay';
+  overlay.id = 'fb-sheet';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">添加 Feedback</div>
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" class="form-control" id="fb-date" value="${getTodayStr()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">内容</label>
+        <textarea class="form-control" id="fb-text" placeholder="记录学员状态、进步或需要注意的事项..."></textarea>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('fb-sheet').remove()">取消</button>
+        <button class="btn btn-primary btn-full" onclick="confirmAddFeedback('${studentId}')">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('fb-text').focus();
+}
+
+function confirmAddFeedback(studentId) {
+  const text = document.getElementById('fb-text').value.trim();
+  const date = document.getElementById('fb-date').value;
+  if (!text) { showToast('请输入内容'); return; }
+  const student = getStudentById(studentId);
+  const entry = { id: generateId(), date, text };
+  saveStudent({ ...student, feedback: [...(student.feedback || []), entry] });
+  document.getElementById('fb-sheet').remove();
+  renderStudentDetailView(studentId);
+}
+
+function deleteFeedback(studentId, feedbackId) {
+  if (!confirm('确认删除此条 Feedback？')) return;
+  const student = getStudentById(studentId);
+  saveStudent({ ...student, feedback: student.feedback.filter(f => f.id !== feedbackId) });
+  renderStudentDetailView(studentId);
+}
