@@ -2,7 +2,7 @@ const KEYS = {
   students: 'fa_students',
   sessions: 'fa_sessions',
   venues: 'fa_venues',
-  template: 'fa_template',
+  courses: 'fa_courses',
   settings: 'fa_settings',
 };
 
@@ -20,11 +20,29 @@ function getSettings() {
 }
 function saveSettings(s) { _save(KEYS.settings, s); }
 
-// Template
-function getTemplate() {
-  return localStorage.getItem(KEYS.template) || '';
+// Courses
+function getCourses() {
+  const stored = _load(KEYS.courses);
+  if (Array.isArray(stored)) return stored;
+  // Migrate from legacy template string
+  const legacy = localStorage.getItem('fa_template');
+  if (legacy && legacy.trim()) {
+    const migrated = legacy.split('\n').map(s => s.trim()).filter(Boolean)
+      .map(name => ({ id: generateId(), name }));
+    _save(KEYS.courses, migrated);
+    return migrated;
+  }
+  return [];
 }
-function saveTemplate(t) { localStorage.setItem(KEYS.template, t); }
+function saveCourse(course) {
+  const list = getCourses();
+  const idx = list.findIndex(c => c.id === course.id);
+  if (idx >= 0) list[idx] = course; else list.push(course);
+  _save(KEYS.courses, list);
+}
+function deleteCourse(id) {
+  _save(KEYS.courses, getCourses().filter(c => c.id !== id));
+}
 
 // Venues
 function getVenues() { return _load(KEYS.venues) || []; }

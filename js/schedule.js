@@ -114,14 +114,20 @@ function openSessionForm(sessionId) {
   const defaultDate = session ? session.date : scheduleSelectedDate;
   const defaultTime = session ? session.time : '09:00';
 
-  // Pre-fill content from student's last session if adding new
-  let prefillContent = getTemplate();
-  if (!isEdit && students.length > 0) {
-    const firstStudentId = students[0].id;
+  const courses = getCourses();
+  // Determine which course to pre-select
+  let defaultCourseId = courses[0]?.id || '';
+  if (isEdit && session.content) {
+    const matched = courses.find(c => c.name === session.content);
+    if (matched) defaultCourseId = matched.id;
+  } else if (!isEdit && students.length > 0) {
     const lastSession = getSessions()
-      .filter(s => s.student_id === firstStudentId)
+      .filter(s => s.student_id === students[0].id)
       .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
-    if (lastSession) prefillContent = lastSession.content;
+    if (lastSession) {
+      const matched = courses.find(c => c.name === lastSession.content);
+      if (matched) defaultCourseId = matched.id;
+    }
   }
 
   const overlay = document.createElement('div');
@@ -134,7 +140,7 @@ function openSessionForm(sessionId) {
       <div class="form-group">
         <label class="form-label">学员</label>
         <select class="form-control" id="sf-student" onchange="prefillFromLastSession(this.value)">
-          ${students.map(s => `<option value="${s.id}" ${session && session.student_id === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+          ${students.map(s => `<option value="${s.id}" ${session && session.student_id === s.id ? 'selected' : ''}>${escapeHtml(s.name)} (${s.remaining_sessions}节)</option>`).join('')}
         </select>
       </div>
 
@@ -167,7 +173,11 @@ function openSessionForm(sessionId) {
 
       <div class="form-group">
         <label class="form-label">课程内容</label>
-        <textarea class="form-control" id="sf-content" placeholder="每行一个动作">${escapeHtml(session ? session.content : prefillContent)}</textarea>
+        ${courses.length === 0
+          ? '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">请先在「设置」中添加课程</p>'
+          : `<select class="form-control" id="sf-course">
+              ${courses.map(c => `<option value="${c.id}" ${c.id === defaultCourseId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+             </select>`}
       </div>
 
       <div class="form-group">
@@ -190,14 +200,13 @@ function openSessionForm(sessionId) {
 }
 
 function prefillFromLastSession(studentId) {
-  const sessions = getSessions()
+  const last = getSessions()
     .filter(s => s.student_id === studentId)
-    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-  const last = sessions[0];
-  const contentEl = document.getElementById('sf-content');
-  if (contentEl) {
-    contentEl.value = last ? last.content : getTemplate();
-  }
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  const select = document.getElementById('sf-course');
+  if (!select || !last || !last.content) return;
+  const matched = getCourses().find(c => c.name === last.content);
+  if (matched) select.value = matched.id;
 }
 
 function saveSessionFromForm(existingId, wasDeducted) {
@@ -206,10 +215,20 @@ function saveSessionFromForm(existingId, wasDeducted) {
   const date = document.getElementById('sf-date').value;
   const time = document.getElementById('sf-time').value;
   const duration = parseFloat(document.getElementById('sf-duration').value);
-  const content = document.getElementById('sf-content').value.trim();
   const status = document.getElementById('sf-status').value;
+  const courseSelect = document.getElementById('sf-course');
+  const content = courseSelect ? (courseSelect.options[courseSelect.selectedIndex]?.text || '') : '';
 
   if (!studentId || !date || !time) { showToast('请填写必填项'); return; }
+
+  // Block new session scheduling if student has no remaining sessions
+  if (!existingId) {
+    const student = getStudentById(studentId);
+    if (student && student.remaining_sessions <= 0) {
+      showToast('该学员课时已用完，请先续费');
+      return;
+    }
+  }
 
   const id = existingId || generateId();
   let deducted = wasDeducted || false;
