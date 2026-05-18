@@ -9,6 +9,16 @@ function renderSettingsView() {
     <div class="page-header">设置</div>
 
     <div class="card">
+      <div style="font-weight:600;font-size:16px;margin-bottom:12px;">学员数据</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">导出学员姓名与剩余课数，可在新设备上导入恢复。</p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary btn-full" onclick="exportStudentData()">导出数据</button>
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('import-file-input').click()">导入数据</button>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importStudentData(this)">
+    </div>
+
+    <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <span style="font-weight:600;font-size:16px;">课程管理</span>
         <button class="btn btn-primary" style="padding:6px 14px;font-size:13px;min-height:36px;" onclick="showAddCourseSheet()">＋ 添加</button>
@@ -124,4 +134,49 @@ function deleteVenueFromUI(id) {
   deleteVenue(id);
   showToast('已删除');
   renderSettingsView();
+}
+
+function exportStudentData() {
+  const data = getStudents().map(s => ({ name: s.name, remaining_sessions: s.remaining_sessions }));
+  if (data.length === 0) { showToast('暂无学员数据'); return; }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '学员数据.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${data.length} 名学员`);
+}
+
+function importStudentData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('格式错误');
+      let added = 0, updated = 0;
+      imported.forEach(entry => {
+        if (!entry.name || typeof entry.remaining_sessions !== 'number') return;
+        const existing = getStudents().find(s => s.name === entry.name);
+        if (existing) {
+          saveStudent({ ...existing, remaining_sessions: entry.remaining_sessions });
+          updated++;
+        } else {
+          saveStudent({ id: generateId(), name: entry.name, phone: '', notes: '',
+            remaining_sessions: entry.remaining_sessions, packages: [], body_data: [], feedback: [] });
+          added++;
+        }
+      });
+      input.value = '';
+      showToast(`导入完成：新增 ${added} 人，更新 ${updated} 人`);
+    } catch {
+      showToast('文件格式有误，请选择正确的导出文件');
+    }
+  };
+  reader.readAsText(file);
 }
