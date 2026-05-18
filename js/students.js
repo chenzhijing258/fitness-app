@@ -1,0 +1,1 @@
+// students.js — student list + detail views
