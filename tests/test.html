@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Unit Tests</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .pass { color: green; }
+    .fail { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Unit Tests</h2>
+  <div id="results"></div>
+  <script src="../js/utils.js"></script>
+  <script>
+    let passed = 0, failed = 0;
+    const out = document.getElementById('results');
+
+    function test(name, fn) {
+      try {
+        fn();
+        passed++;
+        out.innerHTML += `<div class="pass">✅ ${name}</div>`;
+      } catch(e) {
+        failed++;
+        out.innerHTML += `<div class="fail">❌ ${name}: ${e.message}</div>`;
+      }
+    }
+
+    function assert(cond, msg) {
+      if (!cond) throw new Error(msg || 'assertion failed');
+    }
+
+    function assertEqual(a, b) {
+      if (JSON.stringify(a) !== JSON.stringify(b))
+        throw new Error(`expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+    }
+
+    // generateId
+    test('generateId returns a non-empty string', () => {
+      const id = generateId();
+      assert(typeof id === 'string' && id.length > 0);
+    });
+
+    test('generateId returns unique values', () => {
+      assert(generateId() !== generateId());
+    });
+
+    // getTodayStr
+    test('getTodayStr returns YYYY-MM-DD format', () => {
+      const today = getTodayStr();
+      assert(/^\d{4}-\d{2}-\d{2}$/.test(today), `got: ${today}`);
+    });
+
+    // getWeekDates
+    test('getWeekDates(0) returns 7 dates starting on Monday', () => {
+      const dates = getWeekDates(0);
+      assertEqual(dates.length, 7);
+      dates.forEach(d => assert(/^\d{4}-\d{2}-\d{2}$/.test(d)));
+      const day0 = new Date(dates[0] + 'T00:00:00');
+      assertEqual(day0.getDay(), 1); // Monday
+    });
+
+    test('getWeekDates(1) returns next week', () => {
+      const thisWeek = getWeekDates(0);
+      const nextWeek = getWeekDates(1);
+      assert(nextWeek[0] > thisWeek[0]);
+      const diff = new Date(nextWeek[0]) - new Date(thisWeek[0]);
+      assertEqual(diff, 7 * 24 * 60 * 60 * 1000);
+    });
+
+    // getDayLabel
+    test('getDayLabel returns Chinese weekday', () => {
+      const labels = ['周一','周二','周三','周四','周五','周六','周日'];
+      const dates = getWeekDates(0);
+      dates.forEach((d, i) => assertEqual(getDayLabel(d), labels[i]));
+    });
+
+    // formatDisplayDate
+    test('formatDisplayDate formats correctly', () => {
+      assertEqual(formatDisplayDate('2026-05-18'), '5月18日');
+    });
+
+    // isBeforeToday
+    test('isBeforeToday: yesterday is before today', () => {
+      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = yesterday.toISOString().slice(0,10);
+      assert(isBeforeToday(yStr));
+    });
+
+    test('isBeforeToday: today is NOT before today', () => {
+      assert(!isBeforeToday(getTodayStr()));
+    });
+
+    out.innerHTML += `<br><strong>${passed} passed, ${failed} failed</strong>`;
+  </script>
+</body>
+</html>
