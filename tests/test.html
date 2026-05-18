@@ -92,6 +92,110 @@
     test('isBeforeToday: today is NOT before today', () => {
       assert(!isBeforeToday(getTodayStr()));
     });
+  </script>
+
+  <script src="../js/data.js"></script>
+  <script>
+    // Clear storage before data tests
+    localStorage.clear();
+
+    // getSettings / saveSettings
+    test('getSettings returns default renewal_threshold of 3', () => {
+      const s = getSettings();
+      assertEqual(s.renewal_threshold, 3);
+    });
+
+    test('saveSettings persists and getSettings retrieves', () => {
+      saveSettings({ renewal_threshold: 5 });
+      assertEqual(getSettings().renewal_threshold, 5);
+      saveSettings({ renewal_threshold: 3 }); // reset
+    });
+
+    // getTemplate / saveTemplate
+    test('getTemplate returns empty string by default', () => {
+      assertEqual(getTemplate(), '');
+    });
+
+    test('saveTemplate persists', () => {
+      saveTemplate('深蹲\n硬拉');
+      assertEqual(getTemplate(), '深蹲\n硬拉');
+      saveTemplate('');
+    });
+
+    // getVenues / saveVenue / deleteVenue
+    test('getVenues returns empty array by default', () => {
+      assertEqual(getVenues().length, 0);
+    });
+
+    test('saveVenue adds a venue', () => {
+      saveVenue({ id: 'v1', name: '朝阳健身房' });
+      const venues = getVenues();
+      assertEqual(venues.length, 1);
+      assertEqual(venues[0].name, '朝阳健身房');
+    });
+
+    test('saveVenue updates existing venue', () => {
+      saveVenue({ id: 'v1', name: '朝阳健身房Updated' });
+      assertEqual(getVenues().length, 1);
+      assertEqual(getVenues()[0].name, '朝阳健身房Updated');
+    });
+
+    test('deleteVenue removes venue', () => {
+      deleteVenue('v1');
+      assertEqual(getVenues().length, 0);
+    });
+
+    // getStudents / saveStudent / deleteStudent
+    test('getStudents returns empty array by default', () => {
+      assertEqual(getStudents().length, 0);
+    });
+
+    test('saveStudent adds a student', () => {
+      saveStudent({ id: 's1', name: '张三', phone: '', notes: '', remaining_sessions: 10, packages: [], body_data: [], feedback: [] });
+      assertEqual(getStudents().length, 1);
+      assertEqual(getStudentById('s1').name, '张三');
+    });
+
+    test('saveStudent updates existing student', () => {
+      saveStudent({ id: 's1', name: '张三Updated', phone: '', notes: '', remaining_sessions: 9, packages: [], body_data: [], feedback: [] });
+      assertEqual(getStudents().length, 1);
+      assertEqual(getStudentById('s1').remaining_sessions, 9);
+    });
+
+    test('deleteStudent removes student', () => {
+      deleteStudent('s1');
+      assertEqual(getStudents().length, 0);
+      assert(getStudentById('s1') === null);
+    });
+
+    // getSessions / saveSession / deleteSession
+    test('getSessions returns empty array by default', () => {
+      assertEqual(getSessions().length, 0);
+    });
+
+    test('saveSession adds a session', () => {
+      saveSession({ id: 'sess1', student_id: 's1', venue_id: 'v1', date: '2026-05-18', time: '09:00', duration_hours: 1, content: '深蹲', status: '已安排', deducted: false });
+      assertEqual(getSessions().length, 1);
+    });
+
+    test('getSessionsByDate filters correctly', () => {
+      assertEqual(getSessionsByDate('2026-05-18').length, 1);
+      assertEqual(getSessionsByDate('2026-05-19').length, 0);
+    });
+
+    test('getSessionsByStudentId filters correctly', () => {
+      saveSession({ id: 'sess2', student_id: 's2', venue_id: 'v1', date: '2026-05-18', time: '10:00', duration_hours: 1, content: '硬拉', status: '已安排', deducted: false });
+      assertEqual(getSessionsByStudentId('s1').length, 1);
+      assertEqual(getSessionsByStudentId('s2').length, 1);
+    });
+
+    test('deleteSession removes session', () => {
+      deleteSession('sess1');
+      deleteSession('sess2');
+      assertEqual(getSessions().length, 0);
+    });
+
+    localStorage.clear();
 
     out.innerHTML += `<br><strong>${passed} passed, ${failed} failed</strong>`;
   </script>
