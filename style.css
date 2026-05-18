@@ -16,6 +16,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   background: var(--bg);
@@ -29,7 +31,7 @@ body {
 
 #view {
   flex: 1;
-  padding-bottom: var(--nav-height);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 
@@ -41,11 +43,12 @@ body {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   background: var(--card);
   border-top: 1px solid var(--border);
   display: flex;
   z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .nav-btn {
