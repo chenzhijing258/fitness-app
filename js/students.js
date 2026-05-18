@@ -333,3 +333,134 @@ function deleteFeedback(studentId, feedbackId) {
   saveStudent({ ...student, feedback: student.feedback.filter(f => f.id !== feedbackId) });
   renderStudentDetailView(studentId);
 }
+
+function renderBodyDataSection(student) {
+  const entries = (student.body_data || []).sort((a, b) => b.date.localeCompare(a.date));
+  return `
+    <canvas id="body-chart"></canvas>
+    ${entries.length === 0 ? '<p style="color:var(--text-muted);font-size:14px;margin:8px 0;">暂无数据</p>' :
+      entries.map(e => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-weight:600;">${e.weight} kg</div>
+            <div style="font-size:13px;color:var(--text-muted);">${formatDisplayDate(e.date)}${e.notes ? ' · ' + escapeHtml(e.notes) : ''}</div>
+          </div>
+          <button class="btn btn-danger" style="padding:6px 12px;font-size:13px;" onclick="deleteBodyEntry('${student.id}','${e.id}')">删除</button>
+        </div>
+      `).join('')}
+    <button class="btn btn-ghost btn-full mt-16" onclick="showAddBodySheet('${student.id}')">＋ 记录体重</button>
+  `;
+}
+
+function drawBodyChart(studentId) {
+  const canvas = document.getElementById('body-chart');
+  if (!canvas) return;
+  const student = getStudentById(studentId);
+  const entries = (student.body_data || []).sort((a, b) => a.date.localeCompare(b.date));
+  if (entries.length < 2) { canvas.style.display = 'none'; return; }
+
+  canvas.style.display = 'block';
+  canvas.width = canvas.offsetWidth || 320;
+  canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = { top: 20, right: 16, bottom: 30, left: 40 };
+
+  const weights = entries.map(e => e.weight);
+  const minW = Math.min(...weights) - 1;
+  const maxW = Math.max(...weights) + 1;
+
+  const toX = i => pad.left + (i / (entries.length - 1)) * (W - pad.left - pad.right);
+  const toY = w => pad.top + (1 - (w - minW) / (maxW - minW)) * (H - pad.top - pad.bottom);
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * (H - pad.top - pad.bottom);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const label = (maxW - i * (maxW - minW) / 4).toFixed(1);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(label, pad.left - 4, y + 4);
+  }
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  entries.forEach((e, i) => {
+    const x = toX(i), y = toY(e.weight);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Dots + date labels
+  entries.forEach((e, i) => {
+    const x = toX(i), y = toY(e.weight);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#2563eb';
+    ctx.fill();
+    if (i === 0 || i === entries.length - 1) {
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = i === 0 ? 'left' : 'right';
+      ctx.fillText(formatDisplayDate(e.date), x, H - 4);
+    }
+  });
+}
+
+function showAddBodySheet(studentId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'sheet-overlay';
+  overlay.id = 'body-sheet';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">记录体重</div>
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" class="form-control" id="bd-date" value="${getTodayStr()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">体重 (kg)</label>
+        <input type="number" class="form-control" id="bd-weight" placeholder="70.5" step="0.1" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <input type="text" class="form-control" id="bd-notes" placeholder="可选">
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('body-sheet').remove()">取消</button>
+        <button class="btn btn-primary btn-full" onclick="confirmAddBodyEntry('${studentId}')">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('bd-weight').focus();
+}
+
+function confirmAddBodyEntry(studentId) {
+  const weight = parseFloat(document.getElementById('bd-weight').value);
+  const date = document.getElementById('bd-date').value;
+  const notes = document.getElementById('bd-notes').value.trim();
+  if (!weight || weight <= 0) { showToast('请输入有效体重'); return; }
+  const student = getStudentById(studentId);
+  const entry = { id: generateId(), date, weight, notes };
+  saveStudent({ ...student, body_data: [...(student.body_data || []), entry] });
+  document.getElementById('body-sheet').remove();
+  renderStudentDetailView(studentId);
+  setTimeout(() => drawBodyChart(studentId), 50);
+}
+
+function deleteBodyEntry(studentId, entryId) {
+  if (!confirm('确认删除此条数据？')) return;
+  const student = getStudentById(studentId);
+  saveStudent({ ...student, body_data: student.body_data.filter(e => e.id !== entryId) });
+  renderStudentDetailView(studentId);
+  setTimeout(() => drawBodyChart(studentId), 50);
+}
