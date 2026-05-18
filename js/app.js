@@ -40,5 +40,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function runAutoComplete() {
-  // Implemented in Task 8
+  const sessions = getSessions();
+  let changed = false;
+  sessions.forEach(session => {
+    if (session.status === '已安排' && isBeforeToday(session.date) && !session.deducted) {
+      session.status = '已完成';
+      session.deducted = true;
+      const student = getStudentById(session.student_id);
+      if (student && student.remaining_sessions > 0) {
+        saveStudent({ ...student, remaining_sessions: student.remaining_sessions - 1 });
+      }
+      changed = true;
+    } else if (session.status === '已安排' && isBeforeToday(session.date) && session.deducted) {
+      // Already deducted manually, just update status
+      session.status = '已完成';
+      changed = true;
+    }
+  });
+  if (changed) {
+    localStorage.setItem('fa_sessions', JSON.stringify(sessions));
+  }
 }
