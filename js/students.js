@@ -168,8 +168,6 @@ function renderStudentDetailView(studentId) {
       </div>
     </div>
   `;
-
-  setTimeout(() => drawBodyChart(studentId), 50);
 }
 
 function toggleSection(id) {
@@ -335,85 +333,82 @@ function deleteFeedback(studentId, feedbackId) {
   renderStudentDetailView(studentId);
 }
 
+const BODY_METRICS = [
+  { key: 'weight',      label: '体重',   unit: 'kg' },
+  { key: 'body_fat',   label: '体脂',   unit: '%'  },
+  { key: 'shoulder',   label: '肩宽',   unit: 'cm' },
+  { key: 'chest',      label: '胸围',   unit: 'cm' },
+  { key: 'waist',      label: '腰围',   unit: 'cm' },
+  { key: 'hip',        label: '臀围',   unit: 'cm' },
+  { key: 'left_arm',   label: '左臂',   unit: 'cm' },
+  { key: 'right_arm',  label: '右臂',   unit: 'cm' },
+  { key: 'left_thigh', label: '左大腿', unit: 'cm' },
+  { key: 'right_thigh',label: '右大腿', unit: 'cm' },
+];
+
 function renderBodyDataSection(student) {
   const entries = (student.body_data || []).sort((a, b) => b.date.localeCompare(a.date));
-  return `
-    <canvas id="body-chart"></canvas>
-    ${entries.length === 0 ? '<p style="color:var(--text-muted);font-size:14px;margin:8px 0;">暂无数据</p>' :
-      entries.map(e => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:600;">${e.weight} kg</div>
-            <div style="font-size:13px;color:var(--text-muted);">${formatDisplayDate(e.date)}${e.notes ? ' · ' + escapeHtml(e.notes) : ''}</div>
+
+  // Latest entry delta card
+  let deltaHtml = '';
+  if (entries.length >= 1) {
+    const latest = entries[0];
+    const prev = entries[1] || null;
+    const measured = BODY_METRICS.filter(m => latest[m.key] != null && latest[m.key] !== '');
+    if (measured.length > 0) {
+      deltaHtml = `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            最新测量 ${formatDisplayDate(latest.date)}${prev ? '（对比 ' + formatDisplayDate(prev.date) + '）' : ''}
           </div>
-          <button class="btn btn-danger" style="padding:6px 12px;font-size:13px;" onclick="deleteBodyEntry('${student.id}','${e.id}')">删除</button>
-        </div>
-      `).join('')}
-    <button class="btn btn-ghost btn-full mt-16" onclick="showAddBodySheet('${student.id}')">＋ 记录体重</button>
-  `;
-}
-
-function drawBodyChart(studentId) {
-  const canvas = document.getElementById('body-chart');
-  if (!canvas) return;
-  const student = getStudentById(studentId);
-  const entries = (student.body_data || []).sort((a, b) => a.date.localeCompare(b.date));
-  if (entries.length < 2) { canvas.style.display = 'none'; return; }
-
-  canvas.style.display = 'block';
-  canvas.width = canvas.offsetWidth || 320;
-  canvas.height = 180;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const pad = { top: 20, right: 16, bottom: 30, left: 40 };
-
-  const weights = entries.map(e => e.weight);
-  const minW = Math.min(...weights) - 1;
-  const maxW = Math.max(...weights) + 1;
-
-  const toX = i => pad.left + (i / (entries.length - 1)) * (W - pad.left - pad.right);
-  const toY = w => pad.top + (1 - (w - minW) / (maxW - minW)) * (H - pad.top - pad.bottom);
-
-  ctx.clearRect(0, 0, W, H);
-
-  // Grid lines
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + (i / 4) * (H - pad.top - pad.bottom);
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
-    const label = (maxW - i * (maxW - minW) / 4).toFixed(1);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(label, pad.left - 4, y + 4);
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${measured.map(m => {
+              const val = latest[m.key];
+              let deltaHtml = '';
+              if (prev != null && prev[m.key] != null && prev[m.key] !== '') {
+                const diff = +(val - prev[m.key]).toFixed(1);
+                deltaHtml = diff > 0
+                  ? ` <span style="font-size:11px;color:var(--text-muted);">↑${diff}</span>`
+                  : diff < 0
+                  ? ` <span style="font-size:11px;color:var(--text-muted);">↓${Math.abs(diff)}</span>`
+                  : ` <span style="font-size:11px;color:var(--text-muted);">—</span>`;
+              }
+              return `
+                <div style="background:var(--card-2);border-radius:var(--radius-sm);padding:10px 12px;">
+                  <div style="font-size:11px;color:var(--text-muted);">${m.label}</div>
+                  <div style="font-size:16px;font-weight:700;margin-top:2px;">
+                    ${val}<span style="font-size:11px;font-weight:400;color:var(--text-muted);"> ${m.unit}</span>${deltaHtml}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }
   }
 
-  // Line
-  ctx.beginPath();
-  ctx.strokeStyle = '#2563eb';
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  entries.forEach((e, i) => {
-    const x = toX(i), y = toY(e.weight);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
+  // Full history list
+  const historyHtml = entries.length === 0
+    ? '<p style="color:var(--text-muted);font-size:14px;margin:8px 0;">暂无数据</p>'
+    : `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">历史记录</div>` +
+      entries.map(e => {
+        const measured = BODY_METRICS.filter(m => e[m.key] != null && e[m.key] !== '');
+        return `
+          <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:13px;color:var(--text-muted);">${formatDisplayDate(e.date)}</span>
+              <button class="btn btn-danger" style="padding:3px 10px;font-size:12px;min-height:28px;"
+                onclick="deleteBodyEntry('${student.id}','${e.id}')">删除</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+              ${measured.map(m =>
+                `<span style="font-size:12px;background:var(--card-2);padding:3px 8px;border-radius:6px;">${m.label} ${e[m.key]}${m.unit}</span>`
+              ).join('')}
+            </div>
+          </div>`;
+      }).join('');
 
-  // Dots + date labels
-  entries.forEach((e, i) => {
-    const x = toX(i), y = toY(e.weight);
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#2563eb';
-    ctx.fill();
-    if (i === 0 || i === entries.length - 1) {
-      ctx.fillStyle = '#64748b';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = i === 0 ? 'left' : 'right';
-      ctx.fillText(formatDisplayDate(e.date), x, H - 4);
-    }
-  });
+  return `${deltaHtml}${historyHtml}
+    <button class="btn btn-ghost btn-full mt-16" onclick="showAddBodySheet('${student.id}')">＋ 记录身体数据</button>`;
 }
 
 function showAddBodySheet(studentId) {
@@ -422,18 +417,17 @@ function showAddBodySheet(studentId) {
   overlay.id = 'body-sheet';
   overlay.innerHTML = `
     <div class="sheet">
-      <div class="sheet-title">记录体重</div>
+      <div class="sheet-title">记录身体数据</div>
       <div class="form-group">
         <label class="form-label">日期</label>
         <input type="date" class="form-control" id="bd-date" value="${getTodayStr()}">
       </div>
-      <div class="form-group">
-        <label class="form-label">体重 (kg)</label>
-        <input type="number" class="form-control" id="bd-weight" placeholder="70.5" step="0.1" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">备注</label>
-        <input type="text" class="form-control" id="bd-notes" placeholder="可选">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${BODY_METRICS.map(m => `
+          <div class="form-group" style="margin-bottom:10px;">
+            <label class="form-label">${m.label}（${m.unit}）</label>
+            <input type="number" class="form-control" id="bd-${m.key}" placeholder="选填" step="0.1" min="0">
+          </div>`).join('')}
       </div>
       <div class="sheet-actions">
         <button class="btn btn-ghost btn-full" onclick="document.getElementById('body-sheet').remove()">取消</button>
@@ -442,20 +436,21 @@ function showAddBodySheet(studentId) {
     </div>
   `;
   document.body.appendChild(overlay);
-  document.getElementById('bd-weight').focus();
 }
 
 function confirmAddBodyEntry(studentId) {
-  const weight = parseFloat(document.getElementById('bd-weight').value);
   const date = document.getElementById('bd-date').value;
-  const notes = document.getElementById('bd-notes').value.trim();
-  if (!weight || weight <= 0) { showToast('请输入有效体重'); return; }
+  const entry = { id: generateId(), date };
+  BODY_METRICS.forEach(m => {
+    const raw = document.getElementById('bd-' + m.key).value;
+    const val = parseFloat(raw);
+    if (raw !== '' && !isNaN(val) && val >= 0) entry[m.key] = val;
+  });
+  if (Object.keys(entry).length <= 2) { showToast('请至少填写一项数据'); return; }
   const student = getStudentById(studentId);
-  const entry = { id: generateId(), date, weight, notes };
   saveStudent({ ...student, body_data: [...(student.body_data || []), entry] });
   document.getElementById('body-sheet').remove();
   renderStudentDetailView(studentId);
-  setTimeout(() => drawBodyChart(studentId), 50);
 }
 
 function deleteBodyEntry(studentId, entryId) {
@@ -463,5 +458,4 @@ function deleteBodyEntry(studentId, entryId) {
   const student = getStudentById(studentId);
   saveStudent({ ...student, body_data: student.body_data.filter(e => e.id !== entryId) });
   renderStudentDetailView(studentId);
-  setTimeout(() => drawBodyChart(studentId), 50);
 }

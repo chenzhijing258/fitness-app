@@ -319,8 +319,6 @@ textarea.form-control { min-height: 100px; resize: vertical; }
 .badge-warn { background: var(--warning-light); color: var(--warning); }
 .badge-ok { background: var(--success-light); color: var(--success); }
 
-/* Chart */
-#body-chart { width: 100%; height: 180px; border-radius: var(--radius-sm); }
 
 /* Tab strip */
 .tab-strip {
