@@ -100,6 +100,36 @@ function selectScheduleDay(dateStr) {
   renderScheduleView();
 }
 
+// Returns courses sorted by how long ago they were last done for a student.
+// "Never done" courses rank first (Infinity days), then most overdue.
+function _sortCoursesByRec(studentId) {
+  const courses = getCourses();
+  if (courses.length === 0) return [];
+  const studentSessions = getSessions().filter(s => s.student_id === studentId);
+  const today = new Date();
+  return courses.map(c => {
+    const last = studentSessions
+      .filter(s => s.content === c.name)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const daysSince = last
+      ? Math.floor((today - new Date(last.date + 'T00:00:00')) / 86400000)
+      : Infinity;
+    return { ...c, daysSince };
+  }).sort((a, b) => b.daysSince - a.daysSince);
+}
+
+// Builds <option> HTML sorted by recommendation.
+// selectedName: pre-select this course (edit mode); null = pre-select top recommendation.
+function _courseOptionsHtml(studentId, selectedName) {
+  const sorted = _sortCoursesByRec(studentId);
+  return sorted.map((c, idx) => {
+    const isSelected = selectedName != null ? c.name === selectedName : idx === 0;
+    const recTag = idx === 0 ? ' ✦ 推荐' : '';
+    const dayTag = c.daysSince === Infinity ? ' · 从未安排' : ` · ${c.daysSince}天前`;
+    return `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${escapeHtml(c.name)}${recTag}${dayTag}</option>`;
+  }).join('');
+}
+
 function openSessionForm(sessionId) {
   const session = sessionId ? getSessionById(sessionId) : null;
   const students = getStudents();
@@ -119,20 +149,8 @@ function openSessionForm(sessionId) {
   const hourOptions = Array.from({length: 17}, (_, i) => String(i + 6).padStart(2, '0')); // 06–22
 
   const courses = getCourses();
-  // Determine which course to pre-select
-  let defaultCourseId = courses[0]?.id || '';
-  if (isEdit && session.content) {
-    const matched = courses.find(c => c.name === session.content);
-    if (matched) defaultCourseId = matched.id;
-  } else if (!isEdit && students.length > 0) {
-    const lastSession = getSessions()
-      .filter(s => s.student_id === students[0].id)
-      .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
-    if (lastSession) {
-      const matched = courses.find(c => c.name === lastSession.content);
-      if (matched) defaultCourseId = matched.id;
-    }
-  }
+  const initStudentId = isEdit ? session.student_id : students[0].id;
+  const courseOptionsHtml = _courseOptionsHtml(initStudentId, isEdit ? session.content : null);
 
   const overlay = document.createElement('div');
   overlay.className = 'sheet-overlay';
@@ -185,9 +203,7 @@ function openSessionForm(sessionId) {
         <label class="form-label">课程内容</label>
         ${courses.length === 0
           ? '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">请先在「设置」中添加课程</p>'
-          : `<select class="form-control" id="sf-course">
-              ${courses.map(c => `<option value="${c.id}" ${c.id === defaultCourseId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
-             </select>`}
+          : `<select class="form-control" id="sf-course">${courseOptionsHtml}</select>`}
       </div>
 
       <div class="form-group">
@@ -210,13 +226,9 @@ function openSessionForm(sessionId) {
 }
 
 function prefillFromLastSession(studentId) {
-  const last = getSessions()
-    .filter(s => s.student_id === studentId)
-    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
   const select = document.getElementById('sf-course');
-  if (!select || !last || !last.content) return;
-  const matched = getCourses().find(c => c.name === last.content);
-  if (matched) select.value = matched.id;
+  if (!select || getCourses().length === 0) return;
+  select.innerHTML = _courseOptionsHtml(studentId, null);
 }
 
 function _timeToMins(t) {
