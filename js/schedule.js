@@ -113,6 +113,10 @@ function openSessionForm(sessionId) {
 
   const defaultDate = session ? session.date : scheduleSelectedDate;
   const defaultTime = session ? session.time : '09:00';
+  const defaultHour = defaultTime.slice(0, 2);
+  const rawMin = parseInt(defaultTime.slice(3, 5));
+  const defaultMinute = String([0, 15, 30, 45].includes(rawMin) ? rawMin : 0).padStart(2, '0');
+  const hourOptions = Array.from({length: 17}, (_, i) => String(i + 6).padStart(2, '0')); // 06–22
 
   const courses = getCourses();
   // Determine which course to pre-select
@@ -151,14 +155,20 @@ function openSessionForm(sessionId) {
         </select>
       </div>
 
-      <div style="display:flex;gap:10px;">
-        <div class="form-group" style="flex:1">
-          <label class="form-label">日期</label>
-          <input type="date" class="form-control" id="sf-date" value="${defaultDate}">
-        </div>
-        <div class="form-group" style="flex:1">
-          <label class="form-label">时间</label>
-          <input type="time" class="form-control" id="sf-time" value="${defaultTime}">
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" class="form-control" id="sf-date" value="${defaultDate}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">时间</label>
+        <div style="display:flex;gap:8px;">
+          <select class="form-control" id="sf-time-hour" style="flex:1">
+            ${hourOptions.map(h => `<option value="${h}" ${h === defaultHour ? 'selected' : ''}>${h} 时</option>`).join('')}
+          </select>
+          <select class="form-control" id="sf-time-minute" style="flex:1">
+            ${['00','15','30','45'].map(m => `<option value="${m}" ${m === defaultMinute ? 'selected' : ''}>${m} 分</option>`).join('')}
+          </select>
         </div>
       </div>
 
@@ -209,11 +219,28 @@ function prefillFromLastSession(studentId) {
   if (matched) select.value = matched.id;
 }
 
+function _timeToMins(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function _hasTimeConflict(date, time, durationHours, excludeId) {
+  const newStart = _timeToMins(time);
+  const newEnd = newStart + durationHours * 60;
+  return getSessions().some(s => {
+    if (s.id === excludeId) return false;
+    if (s.date !== date) return false;
+    const sStart = _timeToMins(s.time);
+    const sEnd = sStart + s.duration_hours * 60;
+    return newStart < sEnd && sStart < newEnd;
+  });
+}
+
 function saveSessionFromForm(existingId, wasDeducted) {
   const studentId = document.getElementById('sf-student').value;
   const venueId = document.getElementById('sf-venue').value;
   const date = document.getElementById('sf-date').value;
-  const time = document.getElementById('sf-time').value;
+  const time = document.getElementById('sf-time-hour').value + ':' + document.getElementById('sf-time-minute').value;
   const duration = parseFloat(document.getElementById('sf-duration').value);
   const status = document.getElementById('sf-status').value;
   const courseSelect = document.getElementById('sf-course');
@@ -228,6 +255,12 @@ function saveSessionFromForm(existingId, wasDeducted) {
       showToast('该学员课时已用完，请先续费');
       return;
     }
+  }
+
+  // Check time conflict (overlap with any existing session on same date, excluding self)
+  if (_hasTimeConflict(date, time, duration, existingId)) {
+    showToast('该时间段与已有课程重叠');
+    return;
   }
 
   const id = existingId || generateId();
