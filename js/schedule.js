@@ -64,7 +64,7 @@ function renderScheduleView() {
             <span class="session-time">${s.time}</span>
             <div class="session-info">
               <div class="session-name">${student ? escapeHtml(student.name) : '未知学员'}</div>
-              <div class="session-meta">${venue ? escapeHtml(venue.name) : ''} · ${s.duration_hours}小时</div>
+              <div class="session-meta">${s.content ? escapeHtml(s.content) + ' · ' : ''}${venue ? escapeHtml(venue.name) : ''} · ${s.duration_hours}小时</div>
             </div>
             <span class="session-status ${s.status === '已完成' ? 'status-done' : 'status-scheduled'}">${s.status}</span>
           </div>
