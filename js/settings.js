@@ -4,9 +4,39 @@ function renderSettingsView() {
   const venues = getVenues();
   const courses = getCourses();
   const settings = getSettings();
+  const hasToken = !!getGistToken();
+  const gistId   = getGistId();
+  const gistUrl  = gistId ? 'https://gist.github.com/' + gistId : '';
 
   document.getElementById('view').innerHTML = `
     <div class="page-header">设置</div>
+
+    <div class="card">
+      <div style="font-weight:600;font-size:16px;margin-bottom:12px;">云端同步</div>
+      ${hasToken ? `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span style="font-size:22px;">☁️</span>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--success);">同步已开启</div>
+            ${gistUrl
+              ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;word-break:break-all;">${gistUrl}</div>`
+              : `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">首次保存后自动创建备份</div>`}
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-full" onclick="disconnectGist()">断开连接</button>
+      ` : `
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+          输入 GitHub Personal Access Token（需勾选 gist 权限）即可自动备份数据到私密 Gist。
+        </p>
+        <div class="form-group">
+          <label class="form-label">GitHub Token</label>
+          <input type="password" class="form-control" id="gist-token-input"
+                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveGistSettings()">保存并测试</button>
+        <p id="gist-test-result" style="font-size:13px;margin-top:10px;min-height:18px;"></p>
+      `}
+    </div>
 
     <div class="card">
       <div style="font-weight:600;font-size:16px;margin-bottom:12px;">学员数据</div>
@@ -133,6 +163,36 @@ function confirmAddVenue() {
 function deleteVenueFromUI(id) {
   deleteVenue(id);
   showToast('已删除');
+  renderSettingsView();
+}
+
+async function saveGistSettings() {
+  const input = document.getElementById('gist-token-input');
+  const resultEl = document.getElementById('gist-test-result');
+  if (!input || !resultEl) return;
+
+  const token = input.value.trim();
+  if (!token) { resultEl.style.color = 'var(--danger)'; resultEl.textContent = '请输入 Token'; return; }
+
+  resultEl.style.color = 'var(--text-muted)';
+  resultEl.textContent = '测试中…';
+
+  const { ok, msg } = await testGistConnection(token);
+  if (ok) {
+    saveGistToken(token);
+    // Trigger first sync immediately so Gist is created and URL appears on next render
+    await _doSyncToCloud();
+    showToast('同步已开启');
+    renderSettingsView();
+  } else {
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = msg;
+  }
+}
+
+function disconnectGist() {
+  saveGistToken('');   // clears token + gist ID
+  showToast('已断开同步');
   renderSettingsView();
 }
 

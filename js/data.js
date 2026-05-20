@@ -12,6 +12,8 @@ function _load(key) {
 
 function _save(key, val) {
   localStorage.setItem(key, JSON.stringify(val));
+  // Schedule debounced upload to GitHub Gist (no-op if no token configured)
+  if (typeof scheduleSyncToCloud === 'function') scheduleSyncToCloud();
 }
 
 // Settings

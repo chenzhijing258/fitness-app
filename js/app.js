@@ -34,7 +34,10 @@ document.getElementById('bottom-nav').addEventListener('click', e => {
 });
 
 // Startup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async function() {
+  // Pull latest data from cloud before rendering.
+  // syncFromCloud() is a no-op if no token/gist configured — app works offline too.
+  await syncFromCloud();
   runAutoComplete();
   navigate('schedule');
 });
