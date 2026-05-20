@@ -367,10 +367,15 @@ function renderBodyDataSection(student) {
               let deltaHtml = '';
               if (prev != null && prev[m.key] != null && prev[m.key] !== '') {
                 const diff = +(val - prev[m.key]).toFixed(1);
+                // weight & body_fat: lower is better → rise = red, drop = green
+                // all other metrics: higher is better → rise = green, drop = red
+                const lowerIsBetter = m.key === 'weight' || m.key === 'body_fat';
+                const goodColor = 'var(--success)';
+                const badColor  = 'var(--danger)';
                 deltaHtml = diff > 0
-                  ? ` <span style="font-size:11px;color:var(--text-muted);">↑${diff}</span>`
+                  ? ` <span style="font-size:11px;color:${lowerIsBetter ? badColor : goodColor};">↑${diff}</span>`
                   : diff < 0
-                  ? ` <span style="font-size:11px;color:var(--text-muted);">↓${Math.abs(diff)}</span>`
+                  ? ` <span style="font-size:11px;color:${lowerIsBetter ? goodColor : badColor};">↓${Math.abs(diff)}</span>`
                   : ` <span style="font-size:11px;color:var(--text-muted);">—</span>`;
               }
               return `
@@ -396,8 +401,12 @@ function renderBodyDataSection(student) {
           <div style="padding:10px 0;border-bottom:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <span style="font-size:13px;color:var(--text-muted);">${formatDisplayDate(e.date)}</span>
-              <button class="btn btn-danger" style="padding:3px 10px;font-size:12px;min-height:28px;"
-                onclick="deleteBodyEntry('${student.id}','${e.id}')">删除</button>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;min-height:28px;"
+                  onclick="showEditBodySheet('${student.id}','${e.id}')">编辑</button>
+                <button class="btn btn-danger" style="padding:3px 10px;font-size:12px;min-height:28px;"
+                  onclick="deleteBodyEntry('${student.id}','${e.id}')">删除</button>
+              </div>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;">
               ${measured.map(m =>
@@ -409,6 +418,52 @@ function renderBodyDataSection(student) {
 
   return `${deltaHtml}${historyHtml}
     <button class="btn btn-ghost btn-full mt-16" onclick="showAddBodySheet('${student.id}')">＋ 记录身体数据</button>`;
+}
+
+function showEditBodySheet(studentId, entryId) {
+  const student = getStudentById(studentId);
+  const entry = (student.body_data || []).find(e => e.id === entryId);
+  if (!entry) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'sheet-overlay';
+  overlay.id = 'body-sheet';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-title">编辑身体数据</div>
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input type="date" class="form-control" id="bd-date" value="${entry.date}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${BODY_METRICS.map(m => `
+          <div class="form-group" style="margin-bottom:10px;">
+            <label class="form-label">${m.label}（${m.unit}）</label>
+            <input type="number" class="form-control" id="bd-${m.key}" placeholder="选填" step="0.1" min="0"
+              ${entry[m.key] != null ? `value="${entry[m.key]}"` : ''}></div>`).join('')}
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('body-sheet').remove()">取消</button>
+        <button class="btn btn-primary btn-full" onclick="confirmEditBodyEntry('${studentId}','${entryId}')">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function confirmEditBodyEntry(studentId, entryId) {
+  const date = document.getElementById('bd-date').value;
+  const updated = { id: entryId, date };
+  BODY_METRICS.forEach(m => {
+    const raw = document.getElementById('bd-' + m.key).value;
+    const val = parseFloat(raw);
+    if (raw !== '' && !isNaN(val) && val >= 0) updated[m.key] = val;
+  });
+  if (Object.keys(updated).length <= 2) { showToast('请至少填写一项数据'); return; }
+  const student = getStudentById(studentId);
+  saveStudent({ ...student, body_data: student.body_data.map(e => e.id === entryId ? updated : e) });
+  document.getElementById('body-sheet').remove();
+  renderStudentDetailView(studentId);
 }
 
 function showAddBodySheet(studentId) {
