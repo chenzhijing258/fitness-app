@@ -27,8 +27,8 @@ function _gistHeaders(token) {
 }
 
 /**
- * Builds the Gist file content: a JSON string whose keys are the fa_* localStorage keys
- * and whose values are the raw localStorage strings for each key.
+ * Builds the Gist file content: a JSON object mapping each fa_* key to its
+ * raw localStorage string value.
  * Example: '{"fa_students":"[{...}]","fa_sessions":"[]",...}'
  */
 function _gistPayload() {
@@ -41,8 +41,41 @@ function _gistPayload() {
 }
 
 /**
+ * Resolve the Gist ID to use:
+ * 1. Return the cached ID from localStorage if present.
+ * 2. Otherwise search the account's Gists for one containing GIST_FILENAME.
+ *    If found, cache and return that ID (so all devices share the same Gist).
+ * 3. If nothing found, return null (caller will create a new Gist).
+ */
+async function _resolveGistId(token) {
+  var cached = getGistId();
+  if (cached) return cached;
+
+  // Search existing Gists for our file (up to 100 most recent)
+  try {
+    var resp = await fetch('https://api.github.com/gists?per_page=100', {
+      headers: _gistHeaders(token)
+    });
+    if (resp.ok) {
+      var gists = await resp.json();
+      var found = gists.find(function(g) {
+        return g.files && g.files[GIST_FILENAME];
+      });
+      if (found) {
+        localStorage.setItem(GIST_ID_KEY, found.id);
+        return found.id;
+      }
+    }
+  } catch (e) {
+    console.warn('[gist-sync] gist search failed:', e.message);
+  }
+  return null;
+}
+
+/**
  * Upload all fa_* keys to the Gist.
- * Creates a new private Gist if none exists yet (stores the new Gist ID in localStorage).
+ * - If a Gist ID is already known (locally or discovered via search), PATCH it.
+ * - Otherwise create a new private Gist and cache its ID.
  * Called automatically 2 seconds after any _save() via scheduleSyncToCloud().
  */
 async function _doSyncToCloud() {
@@ -51,7 +84,7 @@ async function _doSyncToCloud() {
 
   try {
     var fileContent = _gistPayload();
-    var gistId = getGistId();
+    var gistId = await _resolveGistId(token);
 
     if (gistId) {
       // Update existing Gist
@@ -59,25 +92,21 @@ async function _doSyncToCloud() {
         method: 'PATCH',
         headers: _gistHeaders(token),
         body: JSON.stringify({
-          files: {
-            [GIST_FILENAME]: { content: fileContent }
-          }
+          files: { [GIST_FILENAME]: { content: fileContent } }
         })
       });
       if (!resp.ok) {
         console.warn('[gist-sync] PATCH failed:', resp.status);
       }
     } else {
-      // First sync — create a new secret Gist
+      // No existing Gist — create one
       var createResp = await fetch('https://api.github.com/gists', {
         method: 'POST',
         headers: _gistHeaders(token),
         body: JSON.stringify({
           description: '健身助手数据备份（自动生成，请勿手动删除）',
           public: false,
-          files: {
-            [GIST_FILENAME]: { content: fileContent }
-          }
+          files: { [GIST_FILENAME]: { content: fileContent } }
         })
       });
       if (createResp.ok) {
@@ -108,14 +137,19 @@ function scheduleSyncToCloud() {
 /**
  * Fetch the Gist and update localStorage for any key that differs.
  * Returns true if at least one key changed (caller may want to re-render).
- * Returns false if no token, no Gist ID, network error, or no changes.
+ * Returns false if no token, network error, or no changes.
+ *
+ * Also discovers the Gist ID via search if not cached — so Device B can pull
+ * data immediately after entering the token, before making any writes.
  */
 async function syncFromCloud() {
-  var token  = getGistToken();
-  var gistId = getGistId();
-  if (!token || !gistId) return false;
+  var token = getGistToken();
+  if (!token) return false;
 
   try {
+    var gistId = await _resolveGistId(token);
+    if (!gistId) return false;
+
     var resp = await fetch('https://api.github.com/gists/' + gistId, {
       headers: _gistHeaders(token)
     });
@@ -162,12 +196,14 @@ async function testGistConnection(token) {
 }
 
 /**
- * Save a new PAT. Clears the stored Gist ID so the next sync creates a fresh Gist
- * if the token belongs to a different account.
+ * Save a new PAT and clear the cached Gist ID so the next operation
+ * re-discovers the correct Gist for that account via search.
  */
 function saveGistToken(token) {
   if (token) {
     localStorage.setItem(GIST_TOKEN_KEY, token);
+    // Clear cached ID — _resolveGistId will find the right one on next sync
+    localStorage.removeItem(GIST_ID_KEY);
   } else {
     localStorage.removeItem(GIST_TOKEN_KEY);
     localStorage.removeItem(GIST_ID_KEY);
