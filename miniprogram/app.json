@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/schedule/schedule",
+    "pages/students/students",
+    "pages/settings/settings",
+    "pages/lock/lock"
+  ],
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#3b82f6",
+    "backgroundColor": "#0f172a",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/schedule/schedule",
+        "text": "课程表",
+        "iconPath": "images/tab-schedule.png",
+        "selectedIconPath": "images/tab-schedule-active.png"
+      },
+      {
+        "pagePath": "pages/students/students",
+        "text": "学员",
+        "iconPath": "images/tab-students.png",
+        "selectedIconPath": "images/tab-students-active.png"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置",
+        "iconPath": "images/tab-settings.png",
+        "selectedIconPath": "images/tab-settings-active.png"
+      }
+    ]
+  },
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#0f172a",
+    "navigationBarTitleText": "健身助手",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0f172a"
+  }
+}
