@@ -3,6 +3,7 @@
     "pages/schedule/schedule",
     "pages/students/students",
     "pages/settings/settings",
+    "pages/student-detail/student-detail",
     "pages/lock/lock"
   ],
   "tabBar": {

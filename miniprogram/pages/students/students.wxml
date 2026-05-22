@@ -1,1 +1,56 @@
-<view class="empty-state" style="margin-top:200rpx;">学员模块即将上线</view>
+<!-- pages/students/students.wxml -->
+<view>
+  <view class="page-header">学员</view>
+
+  <view style="padding:0 32rpx 24rpx;">
+    <input class="form-control" placeholder="搜索学员..."
+           placeholder-style="color:#94a3b8"
+           value="{{query}}" bindinput="onSearch"/>
+  </view>
+
+  <view class="student-list" wx:if="{{filtered.length>0}}">
+    <view class="list-item" wx:for="{{filtered}}" wx:key="id"
+          bindtap="onStudentTap" data-id="{{item.id}}">
+      <view style="flex:1;">
+        <text style="font-size:32rpx;font-weight:600;color:var(--text);">{{item.name}}</text>
+      </view>
+      <text class="badge {{item.warn?'badge-warn':'badge-ok'}}">
+        剩余 {{item.remaining_sessions}} 节{{item.warn?' ⚠️':''}}
+      </text>
+      <text style="color:#94a3b8;margin-left:16rpx;font-size:40rpx;">›</text>
+    </view>
+  </view>
+  <view class="empty-state" wx:else>暂无学员，点击 ＋ 添加</view>
+
+  <view class="add-btn" bindtap="onAddTap">＋</view>
+
+  <view class="sheet-overlay" wx:if="{{showSheet}}" bindtap="onCloseSheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">添加学员</view>
+      <view class="form-group">
+        <view class="form-label">姓名 *</view>
+        <input class="form-control" placeholder="学员姓名"
+               value="{{ns_name}}" bindinput="onNameInput"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">电话</view>
+        <input class="form-control" type="number" placeholder="手机号码"
+               value="{{ns_phone}}" bindinput="onPhoneInput"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">备注</view>
+        <input class="form-control" placeholder="备注信息"
+               value="{{ns_notes}}" bindinput="onNotesInput"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">初始课数</view>
+        <input class="form-control" type="number" value="{{ns_sessions}}"
+               bindinput="onSessionsInput"/>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onCloseSheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmAdd">添加</view>
+      </view>
+    </view>
+  </view>
+</view>
