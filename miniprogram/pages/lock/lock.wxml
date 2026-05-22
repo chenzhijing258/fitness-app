@@ -1,0 +1,20 @@
+<!-- pages/lock/lock.wxml -->
+<view class="container">
+  <view class="emoji">🏋️</view>
+  <view class="title">大美女小言的{{'\\n'}}健身课程小助手</view>
+  <view class="card" style="margin-top:48rpx;">
+    <view class="form-group">
+      <view class="form-label">密码</view>
+      <input class="form-control"
+             password
+             placeholder="请输入密码"
+             placeholder-style="color:#94a3b8"
+             value="{{inputVal}}"
+             bindinput="onInput"
+             confirm-type="done"
+             bindconfirm="onConfirm"/>
+    </view>
+    <view class="btn btn-primary btn-full" bindtap="onConfirm">进入</view>
+    <view class="error-text" wx:if="{{showError}}">密码错误，请重试</view>
+  </view>
+</view>
