@@ -32,7 +32,7 @@
     ]
   },
   "window": {
-    "backgroundTextStyle": "dark",
+    "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#0f172a",
     "navigationBarTitleText": "健身助手",
     "navigationBarTextStyle": "white",
