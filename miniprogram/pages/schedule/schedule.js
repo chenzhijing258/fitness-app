@@ -68,7 +68,11 @@ Page({
         anyChanged = true;
       }
     });
-    if (anyChanged) wx.setStorageSync(KEYS.sessions, sessions);
+    if (anyChanged) {
+      wx.setStorageSync(KEYS.sessions, sessions);
+      const app = getApp();
+      if (app && typeof app.scheduleSyncToCloud === 'function') app.scheduleSyncToCloud();
+    }
   },
 
   _refresh() {
