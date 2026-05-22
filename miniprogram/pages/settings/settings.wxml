@@ -1,0 +1,98 @@
+<!-- pages/settings/settings.wxml -->
+<scroll-view scroll-y style="height:100vh;background:var(--bg);">
+  <view class="page-header">设置</view>
+
+  <!-- 账户（退出） -->
+  <view class="card">
+    <view class="section-title">账户</view>
+    <view class="btn btn-ghost btn-full" bindtap="onLogout">退出（重新输入密码）</view>
+  </view>
+
+  <!-- 学员数据 导出/导入 -->
+  <view class="card">
+    <view class="section-title">学员数据</view>
+    <view style="font-size:26rpx;color:#94a3b8;margin-bottom:28rpx;">
+      导出学员姓名与剩余课数，可在新设备上导入恢复。
+    </view>
+    <view style="display:flex;gap:20rpx;">
+      <view class="btn btn-primary btn-full" bindtap="onExport">导出数据</view>
+      <view class="btn btn-ghost btn-full" bindtap="onImport">导入数据</view>
+    </view>
+  </view>
+
+  <!-- 课程管理 -->
+  <view class="card">
+    <view class="add-row">
+      <view class="section-title" style="margin-bottom:0;">课程管理</view>
+      <view class="btn btn-primary" style="padding:12rpx 28rpx;font-size:26rpx;min-height:0;"
+            bindtap="onAddCourse">＋ 添加</view>
+    </view>
+    <view wx:if="{{courses.length===0}}" style="color:#94a3b8;font-size:28rpx;">暂无课程，请先添加</view>
+    <view wx:else>
+      <view class="course-row" wx:for="{{courses}}" wx:key="id">
+        <text class="row-name">{{item.name}}</text>
+        <view class="btn btn-danger" style="padding:10rpx 24rpx;font-size:26rpx;min-height:0;"
+              bindtap="onDelCourse" data-id="{{item.id}}">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 健身房管理 -->
+  <view class="card">
+    <view class="add-row">
+      <view class="section-title" style="margin-bottom:0;">健身房管理</view>
+      <view class="btn btn-primary" style="padding:12rpx 28rpx;font-size:26rpx;min-height:0;"
+            bindtap="onAddVenue">＋ 添加</view>
+    </view>
+    <view wx:if="{{venues.length===0}}" style="color:#94a3b8;font-size:28rpx;">暂无健身房</view>
+    <view wx:else>
+      <view class="venue-row" wx:for="{{venues}}" wx:key="id">
+        <text class="row-name">{{item.name}}</text>
+        <view class="btn btn-danger" style="padding:10rpx 24rpx;font-size:26rpx;min-height:0;"
+              bindtap="onDelVenue" data-id="{{item.id}}">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 续费提醒阈值 -->
+  <view class="card">
+    <view class="form-group">
+      <view class="form-label">续费提醒阈值（节）</view>
+      <input class="form-control" type="number"
+             value="{{threshold}}" bindinput="onThresholdInput"/>
+    </view>
+    <view class="btn btn-primary" bindtap="onSaveThreshold">保存</view>
+  </view>
+
+  <!-- 添加课程 Sheet -->
+  <view class="sheet-overlay" wx:if="{{showCourseSheet}}" bindtap="onCloseSheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">添加课程</view>
+      <view class="form-group">
+        <view class="form-label">课程名称</view>
+        <input class="form-control" placeholder="例如：腿部训练"
+               value="{{newCourseName}}" bindinput="onCourseNameInput"/>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onCloseSheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmCourse">添加</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 添加健身房 Sheet -->
+  <view class="sheet-overlay" wx:if="{{showVenueSheet}}" bindtap="onCloseSheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">添加健身房</view>
+      <view class="form-group">
+        <view class="form-label">健身房名称</view>
+        <input class="form-control" placeholder="例如：朝阳健身房"
+               value="{{newVenueName}}" bindinput="onVenueNameInput"/>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onCloseSheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmVenue">添加</view>
+      </view>
+    </view>
+  </view>
+</scroll-view>

@@ -1,0 +1,25 @@
+/* pages/settings/settings.wxss */
+.section-title {
+  font-weight: 600;
+  font-size: 32rpx;
+  margin-bottom: 24rpx;
+  color: var(--text);
+}
+
+.course-row, .venue-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.course-row:last-child, .venue-row:last-child { border-bottom: none; }
+
+.row-name { flex: 1; font-size: 30rpx; color: var(--text); }
+
+.add-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
