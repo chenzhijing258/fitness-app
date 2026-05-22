@@ -1,0 +1,210 @@
+<!-- pages/student-detail/student-detail.wxml -->
+<scroll-view scroll-y style="height:100vh;background:var(--bg);">
+  <view class="back-row" bindtap="onBack">← 学员列表</view>
+
+  <view style="padding:0 32rpx 16rpx;display:flex;align-items:center;justify-content:space-between;">
+    <text style="font-size:44rpx;font-weight:700;color:var(--text);">{{student.name}}</text>
+    <text class="badge {{warn?'badge-warn':'badge-ok'}}">剩余 {{student.remaining_sessions}} 节</text>
+  </view>
+
+  <!-- 基本信息 -->
+  <view class="card">
+    <view class="section-toggle" bindtap="toggleSection" data-sec="info">
+      <text>基本信息</text>
+      <text>{{openSections.info?'▼':'▶'}}</text>
+    </view>
+    <view class="section-body" wx:if="{{openSections.info}}">
+      <view class="form-group mt-8">
+        <view class="form-label">姓名</view>
+        <input class="form-control" value="{{editName}}" bindinput="onEditName"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">电话</view>
+        <input class="form-control" type="number" value="{{editPhone}}" bindinput="onEditPhone"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">备注</view>
+        <input class="form-control" value="{{editNotes}}" bindinput="onEditNotes"/>
+      </view>
+      <view style="display:flex;gap:20rpx;">
+        <view class="btn btn-primary btn-full" bindtap="onSaveInfo">保存</view>
+        <view class="btn btn-danger" style="padding:20rpx 32rpx;" bindtap="onDeleteStudent">删除学员</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 课包记录 -->
+  <view class="card">
+    <view class="section-toggle" bindtap="toggleSection" data-sec="packages">
+      <text>课包记录</text>
+      <text>{{openSections.packages?'▼':'▶'}}</text>
+    </view>
+    <view class="section-body" wx:if="{{openSections.packages}}">
+      <view wx:if="{{packages.length===0}}" style="color:#94a3b8;font-size:28rpx;">暂无课包记录</view>
+      <view class="pkg-row" wx:for="{{packages}}" wx:key="id">
+        <view>
+          <view style="font-weight:600;font-size:28rpx;color:var(--text);">{{item.quantity}} 节课</view>
+          <view style="font-size:26rpx;color:#94a3b8;">{{item.dateLabel}}</view>
+        </view>
+        <view class="btn btn-danger" style="padding:12rpx 24rpx;font-size:26rpx;min-height:0;"
+              bindtap="onDelPackage" data-id="{{item.id}}">删除</view>
+      </view>
+      <view class="btn btn-ghost btn-full mt-16" bindtap="onAddPackage">＋ 添加课包</view>
+    </view>
+  </view>
+
+  <!-- 历史课程 -->
+  <view class="card">
+    <view class="section-toggle" bindtap="toggleSection" data-sec="history">
+      <text>历史课程</text>
+      <text>{{openSections.history?'▼':'▶'}}</text>
+    </view>
+    <view class="section-body" wx:if="{{openSections.history}}">
+      <view wx:if="{{history.length===0}}" style="color:#94a3b8;font-size:28rpx;">暂无上课记录</view>
+      <view class="history-row" wx:for="{{history}}" wx:key="id">
+        <view>
+          <view style="font-weight:600;font-size:28rpx;color:var(--text);">{{item.dateTime}}</view>
+          <view style="font-size:26rpx;color:#94a3b8;margin-top:4rpx;">{{item.content}}</view>
+        </view>
+        <text class="session-status {{item.statusClass}}">{{item.status}}</text>
+      </view>
+      <view class="btn btn-ghost btn-full mt-8" wx:if="{{hasMoreHistory}}"
+            bindtap="onShowAllHistory">查看全部 {{totalHistory}} 次</view>
+    </view>
+  </view>
+
+  <!-- 身体数据 -->
+  <view class="card">
+    <view class="section-toggle" bindtap="toggleSection" data-sec="body">
+      <text>身体数据</text>
+      <text>{{openSections.body?'▼':'▶'}}</text>
+    </view>
+    <view class="section-body" wx:if="{{openSections.body}}">
+      <!-- Delta 卡片 -->
+      <view wx:if="{{deltaCards.length>0}}">
+        <view style="font-size:24rpx;color:#94a3b8;margin-bottom:16rpx;">{{deltaLabel}}</view>
+        <view class="delta-grid">
+          <view class="delta-card" wx:for="{{deltaCards}}" wx:key="key">
+            <view class="delta-label">{{item.label}}</view>
+            <view class="delta-value">
+              {{item.value}}<text class="delta-unit"> {{item.unit}}</text>
+              <text class="delta-diff" style="color:{{item.diffColor}};">{{item.diffText}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 历史列表 -->
+      <view class="body-history" wx:if="{{bodyEntries.length>0}}">历史记录</view>
+      <view class="body-entry" wx:for="{{bodyEntries}}" wx:key="id">
+        <view style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12rpx;">
+          <text style="font-size:26rpx;color:#94a3b8;">{{item.dateLabel}}</text>
+          <view style="display:flex;gap:12rpx;">
+            <view class="btn btn-ghost" style="padding:6rpx 20rpx;font-size:24rpx;min-height:0;"
+                  bindtap="onEditBody" data-id="{{item.id}}">编辑</view>
+            <view class="btn btn-danger" style="padding:6rpx 20rpx;font-size:24rpx;min-height:0;"
+                  bindtap="onDelBody" data-id="{{item.id}}">删除</view>
+          </view>
+        </view>
+        <view class="tag-row">
+          <text class="metric-chip" wx:for="{{item.chips}}" wx:key="key" wx:for-item="chip">
+            {{chip}}
+          </text>
+        </view>
+      </view>
+
+      <view class="empty-state" wx:if="{{bodyEntries.length===0}}" style="padding:40rpx 0;">
+        暂无数据
+      </view>
+      <view class="btn btn-ghost btn-full mt-16" bindtap="onAddBody">＋ 记录身体数据</view>
+    </view>
+  </view>
+
+  <!-- Feedback -->
+  <view class="card">
+    <view class="section-toggle" bindtap="toggleSection" data-sec="feedback">
+      <text>Feedback</text>
+      <text>{{openSections.feedback?'▼':'▶'}}</text>
+    </view>
+    <view class="section-body" wx:if="{{openSections.feedback}}">
+      <view wx:if="{{feedbacks.length===0}}" style="color:#94a3b8;font-size:28rpx;">暂无 Feedback</view>
+      <view class="fb-row" wx:for="{{feedbacks}}" wx:key="id">
+        <view style="font-size:26rpx;color:#94a3b8;margin-bottom:8rpx;">{{item.dateLabel}}</view>
+        <view style="font-size:30rpx;color:var(--text);">{{item.text}}</view>
+        <view class="btn" style="color:var(--danger);font-size:24rpx;padding:8rpx 0;margin-top:12rpx;"
+              bindtap="onDelFeedback" data-id="{{item.id}}">删除</view>
+      </view>
+      <view class="btn btn-ghost btn-full mt-16" bindtap="onAddFeedback">＋ 添加 Feedback</view>
+    </view>
+  </view>
+
+  <!-- 课包 Sheet -->
+  <view class="sheet-overlay" wx:if="{{showPkgSheet}}" bindtap="onClosePkgSheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">添加课包</view>
+      <view class="form-group">
+        <view class="form-label">购买节数</view>
+        <input class="form-control" type="number" value="{{pkgQty}}" bindinput="onPkgQtyInput"/>
+      </view>
+      <view class="form-group">
+        <view class="form-label">购买日期</view>
+        <picker mode="date" value="{{pkgDate}}" bindchange="onPkgDateChange">
+          <view class="form-control picker-display">{{pkgDate}}</view>
+        </picker>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onClosePkgSheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmPkg">添加</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 身体数据 Sheet（新增和编辑共用） -->
+  <view class="sheet-overlay" wx:if="{{showBodySheet}}" bindtap="onCloseBodySheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">{{bodySheetTitle}}</view>
+      <view class="form-group">
+        <view class="form-label">日期</view>
+        <picker mode="date" value="{{bdDate}}" bindchange="onBdDateChange">
+          <view class="form-control picker-display">{{bdDate}}</view>
+        </picker>
+      </view>
+      <view style="display:grid;grid-template-columns:1fr 1fr;gap:20rpx;">
+        <view class="form-group" style="margin-bottom:20rpx;"
+              wx:for="{{bodyMetrics}}" wx:key="key">
+          <view class="form-label">{{item.label}}（{{item.unit}}）</view>
+          <input class="form-control" type="digit" placeholder="选填"
+                 value="{{bdValues[item.key]}}"
+                 data-key="{{item.key}}" bindinput="onBdInput"/>
+        </view>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onCloseBodySheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmBody">保存</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Feedback Sheet -->
+  <view class="sheet-overlay" wx:if="{{showFbSheet}}" bindtap="onCloseFbSheet">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">添加 Feedback</view>
+      <view class="form-group">
+        <view class="form-label">日期</view>
+        <picker mode="date" value="{{fbDate}}" bindchange="onFbDateChange">
+          <view class="form-control picker-display">{{fbDate}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <view class="form-label">内容</view>
+        <textarea class="form-control" style="min-height:160rpx;resize:none;"
+                  placeholder="记录学员状态、进步或需要注意的事项..."
+                  value="{{fbText}}" bindinput="onFbInput"/>
+      </view>
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onCloseFbSheet">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onConfirmFeedback">保存</view>
+      </view>
+    </view>
+  </view>
+</scroll-view>
