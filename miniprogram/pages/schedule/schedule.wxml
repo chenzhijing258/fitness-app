@@ -1,0 +1,129 @@
+<!-- pages/schedule/schedule.wxml -->
+<view>
+  <!-- 续费提醒 -->
+  <view class="warning-banner" wx:if="{{showWarn}}">⚠️ {{warnText}}</view>
+
+  <view class="page-header">课程表</view>
+
+  <!-- 本周/下周 Tab -->
+  <view class="tab-strip">
+    <view class="tab-btn {{weekOffset===0?'active':''}}"
+          bindtap="onWeekTab" data-offset="{{0}}">本周</view>
+    <view class="tab-btn {{weekOffset===1?'active':''}}"
+          bindtap="onWeekTab" data-offset="{{1}}">下周</view>
+  </view>
+
+  <!-- 7天横向滚动条 -->
+  <scroll-view class="week-strip" scroll-x="true">
+    <view class="day-cell {{item.isActive?'active':''}} {{item.isToday&&!item.isActive?'today':''}}"
+          wx:for="{{weekCells}}" wx:key="date"
+          bindtap="onDayCell" data-date="{{item.date}}">
+      <text class="day-name">{{item.dayName}}</text>
+      <text class="day-number">{{item.dayNumber}}</text>
+      <view class="day-dot" wx:if="{{item.hasSessions}}"></view>
+      <view style="height:10rpx" wx:else></view>
+    </view>
+  </scroll-view>
+
+  <!-- 选中日期标题 -->
+  <view style="margin:0 32rpx 8rpx;">
+    <text style="font-size:30rpx;color:#94a3b8;">{{selectedDateLabel}}</text>
+  </view>
+
+  <!-- 课程列表 -->
+  <view style="margin:0 32rpx;background:#1e293b;border-radius:32rpx;overflow:hidden;">
+    <view class="empty-state" wx:if="{{daySessions.length===0}}">今天暂无课程</view>
+    <block wx:else>
+      <view class="session-row" wx:for="{{daySessions}}" wx:key="id"
+            bindtap="onSessionTap" data-id="{{item.id}}">
+        <text class="session-time">{{item.time}}</text>
+        <view class="session-info">
+          <view class="session-name">{{item.studentName}}</view>
+          <view class="session-meta">{{item.meta}}</view>
+        </view>
+        <text class="session-status {{item.statusClass}}">{{item.status}}</text>
+      </view>
+    </block>
+  </view>
+
+  <!-- FAB -->
+  <view class="add-btn" bindtap="onAddTap">＋</view>
+
+  <!-- 添加/编辑课程 Sheet -->
+  <view class="sheet-overlay" wx:if="{{showForm}}" bindtap="onOverlayTap">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">{{isEdit?'编辑课程':'添加课程'}}</view>
+
+      <view class="form-group">
+        <view class="form-label">学员</view>
+        <picker mode="selector" range="{{studentRange}}" value="{{fStuIdx}}"
+                bindchange="onStuChange">
+          <view class="form-control picker-display">{{studentRange[fStuIdx]}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">场所</view>
+        <picker mode="selector" range="{{venueRange}}" value="{{fVenueIdx}}"
+                bindchange="onVenueChange">
+          <view class="form-control picker-display">{{venueRange[fVenueIdx]||'（无场所）'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">日期</view>
+        <picker mode="date" value="{{fDate}}" bindchange="onDateChange">
+          <view class="form-control picker-display">{{fDate}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">时间</view>
+        <picker mode="multiSelector"
+                range="{{[hourOpts, minOpts]}}"
+                value="{{fTimeVal}}"
+                bindchange="onTimeChange">
+          <view class="form-control picker-display">
+            {{hourOpts[fTimeVal[0]]}} : {{minOpts[fTimeVal[1]]}}
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">时长</view>
+        <picker mode="selector" range="{{durOpts}}" value="{{fDurIdx}}"
+                bindchange="onDurChange">
+          <view class="form-control picker-display">{{durOpts[fDurIdx]}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">课程内容</view>
+        <view wx:if="{{courseOpts.length===0}}"
+              style="color:#94a3b8;font-size:26rpx;padding:16rpx 0;">
+          请先在「设置」中添加课程
+        </view>
+        <picker wx:else mode="selector" range="{{courseOpts}}" value="{{fCourseIdx}}"
+                bindchange="onCourseChange">
+          <view class="form-control picker-display">{{courseOpts[fCourseIdx]}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <view class="form-label">状态</view>
+        <picker mode="selector" range="{{statusOpts}}" value="{{fStatusIdx}}"
+                bindchange="onStatusChange">
+          <view class="form-control picker-display">{{statusOpts[fStatusIdx]}}</view>
+        </picker>
+      </view>
+
+      <view class="sheet-actions">
+        <view class="btn btn-ghost btn-full" bindtap="onFormClose">取消</view>
+        <view class="btn btn-primary btn-full" bindtap="onFormSave">保存</view>
+      </view>
+      <view style="margin-top:24rpx;" wx:if="{{isEdit}}">
+        <view class="btn btn-danger btn-full" bindtap="onFormDelete">删除课程</view>
+      </view>
+    </view>
+  </view>
+</view>
